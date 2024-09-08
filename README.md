@@ -288,3 +288,7 @@ export function loader() {
 ```
 
 ![Remix on Cloudflare](./doc/image.png)
+
+## Reference link
+
+https://github.com/yusukebe/vite-edge-dev-server
