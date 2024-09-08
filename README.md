@@ -203,3 +203,88 @@ const app = async (req: Request, context: AppLoadContext) => {
 
 export default app;
 ```
+
+## vite.config.ts
+
+```ts
+import {
+  vitePlugin as remix,
+  // cloudflareDevProxyVitePlugin as remixCloudflareDevProxy,
+} from "@remix-run/dev";
+import { defineConfig } from "vite";
+import tsconfigPaths from "vite-tsconfig-paths";
+import { devServer } from "./vitePlugin";
+
+export default defineConfig({
+  plugins: [
+    // remixCloudflareDevProxy(),
+    devServer(),
+    remix({
+      future: {
+        v3_fetcherPersist: true,
+        v3_relativeSplatPath: true,
+        v3_throwAbortReason: true,
+      },
+    }),
+    tsconfigPaths(),
+  ],
+});
+```
+
+## app/routes/\_index.tsx
+
+```tsx
+import type { MetaFunction } from "@remix-run/cloudflare";
+import { useLoaderData } from "@remix-run/react";
+
+export const meta: MetaFunction = () => {
+  return [
+    { title: "New Remix App" },
+    {
+      name: "description",
+      content: "Welcome to Remix on Cloudflare!",
+    },
+  ];
+};
+
+export default function Index() {
+  const value = useLoaderData<Record<string, unknown>>();
+  return (
+    <div className="font-sans p-4">
+      <pre>{JSON.stringify(value, null, 2)}</pre>
+      <h1 className="text-3xl">Welcome to Remix on Cloudflare</h1>
+      <ul className="list-disc mt-4 pl-6 space-y-2">
+        <li>
+          <a
+            className="text-blue-700 underline visited:text-purple-900"
+            target="_blank"
+            href="https://remix.run/docs"
+            rel="noreferrer"
+          >
+            Remix Docs
+          </a>
+        </li>
+        <li>
+          <a
+            className="text-blue-700 underline visited:text-purple-900"
+            target="_blank"
+            href="https://developers.cloudflare.com/pages/framework-guides/deploy-a-remix-site/"
+            rel="noreferrer"
+          >
+            Cloudflare Pages Docs - Remix guide
+          </a>
+        </li>
+      </ul>
+    </div>
+  );
+}
+
+export function loader() {
+  return {
+    process: typeof process,
+    runtime: typeof EdgeRuntime === "undefined" ? "" : EdgeRuntime,
+  };
+}
+```
+
+![Remix on Cloudflare](./doc/image.png)
