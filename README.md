@@ -10,10 +10,10 @@ import { Readable } from "node:stream";
 import path from "path";
 import { AppLoadContext } from "@remix-run/cloudflare";
 import { createReadableStreamFromReadable } from "@remix-run/node";
-import { Connect, Plugin as VitePlugin, createViteRuntime } from "vite";
+import { Connect, Plugin as VitePlugin } from "vite";
 import { PlatformProxy } from "wrangler";
-import { EdgeRunner } from "./runner";
 import type { ServerResponse } from "node:http";
+import { EdgeRunner } from "./runner";
 
 const exclude = [
   /.*\.css$/,
@@ -47,8 +47,7 @@ export function devServer<Env, Cf extends CfProperties>(opt?: {
       const cloudflare = await getPlatformProxy<Env, Cf>(options);
 
       const context = { cloudflare };
-      const runner = new EdgeRunner();
-      const runtime = await createViteRuntime(viteDevServer, { runner });
+      const runner = new EdgeRunner(viteDevServer);
 
       if (!viteDevServer.config.server.middlewareMode) {
         viteDevServer.middlewares.use(async (req, nodeRes, next) => {
@@ -63,10 +62,11 @@ export function devServer<Env, Cf extends CfProperties>(opt?: {
                 }
               }
             }
-
-            const appModule = await runtime.executeEntrypoint(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const appModule: any = await runner.import(
               path.resolve(__dirname, "server.ts")
             );
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const app: any = appModule["default"];
             const request = toRequest(req);
@@ -149,40 +149,6 @@ export async function toResponse(res: Response, nodeRes: ServerResponse) {
     await once(readable, "end");
   } else {
     nodeRes.end();
-  }
-}
-```
-
-## vitePlugin/runner.ts
-
-```ts
-import { EdgeVM } from "@edge-runtime/vm";
-import {
-  ssrDynamicImportKey,
-  ssrExportAllKey,
-  ssrImportKey,
-  ssrImportMetaKey,
-  ssrModuleExportsKey,
-} from "vite/runtime";
-import type { ViteModuleRunner, ViteRuntimeModuleContext } from "vite/runtime";
-
-export class EdgeRunner implements ViteModuleRunner {
-  constructor(private vm = new EdgeVM()) {}
-  runViteModule(context: ViteRuntimeModuleContext, code: string) {
-    const run = this.vm.evaluate(
-      `(async(${ssrExportAllKey},${ssrModuleExportsKey},${ssrImportMetaKey},${ssrImportKey},${ssrDynamicImportKey})=>{${code}})`
-    );
-    return run(
-      context[ssrExportAllKey],
-      context[ssrModuleExportsKey],
-      context[ssrImportMetaKey],
-      context[ssrImportKey],
-      context[ssrDynamicImportKey]
-    );
-  }
-
-  runExternalModule(filepath: string) {
-    return import(filepath);
   }
 }
 ```
