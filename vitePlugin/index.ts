@@ -3,10 +3,10 @@ import { Readable } from "node:stream";
 import path from "path";
 import { AppLoadContext } from "@remix-run/cloudflare";
 import { createReadableStreamFromReadable } from "@remix-run/node";
-import { Connect, Plugin as VitePlugin, createViteRuntime } from "vite";
+import { Connect, Plugin as VitePlugin } from "vite";
 import { PlatformProxy } from "wrangler";
-import { EdgeRunner } from "./runner";
 import type { ServerResponse } from "node:http";
+import { EdgeRunner } from "./runner";
 
 const exclude = [
   /.*\.css$/,
@@ -40,8 +40,7 @@ export function devServer<Env, Cf extends CfProperties>(opt?: {
       const cloudflare = await getPlatformProxy<Env, Cf>(options);
 
       const context = { cloudflare };
-      const runner = new EdgeRunner();
-      const runtime = await createViteRuntime(viteDevServer, { runner });
+      const runner = new EdgeRunner(viteDevServer);
 
       if (!viteDevServer.config.server.middlewareMode) {
         viteDevServer.middlewares.use(async (req, nodeRes, next) => {
@@ -56,10 +55,11 @@ export function devServer<Env, Cf extends CfProperties>(opt?: {
                 }
               }
             }
-
-            const appModule = await runtime.executeEntrypoint(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const appModule: any = await runner.import(
               path.resolve(__dirname, "server.ts")
             );
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const app: any = appModule["default"];
             const request = toRequest(req);
